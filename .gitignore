@@ -72,3 +72,5 @@ envs3
 # OS files
 .DS_Store
 *.swp
+/venv
+/.vscode

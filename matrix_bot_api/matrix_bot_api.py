@@ -10,17 +10,23 @@ class MatrixBotAPI:
     # password - Matrix password
     # server   - Matrix server url : port
     # rooms    - List of rooms ids to operate in, or None to accept all rooms
-    def __init__(self, username, password, server, rooms=None):
+    def __init__(self, username, password, server, msg_handler, rooms=None):
         self.username = username
 
         # Authenticate with given credentials
         self.client = MatrixClient(server)
         try:
-            self.client.login_with_password(username, password)
+            self.client.login(username, password)
+            print('Bot was login successfuly.')
         except MatrixRequestError as e:
-            print(e)
+            try:
+                self.client.register_with_password(username, password)
+            except MatrixRequestError as e:
+                print("Error register client", e)
+                raise
             if e.code == 403:
                 print("Bad username/password")
+            print("Login error:", e)
         except Exception as e:
             print("Invalid server URL")
             traceback.print_exc()
@@ -31,6 +37,8 @@ class MatrixBotAPI:
         # Store empty list of handlers
         self.handlers = []
 
+
+        self.msg_handler = msg_handler
         # If rooms is None, we should listen for invites and automatically accept them
         if rooms is None:
             self.client.add_invite_listener(self.handle_invite)
@@ -50,21 +58,27 @@ class MatrixBotAPI:
 
     def handle_message(self, room, event):
         # Make sure we didn't send this message
+        # print('handle message', event)
         if re.match("@" + self.username, event['sender']):
             return
 
+        try:
+            if self.msg_handler is not None:
+                self.msg_handler(room, event, self)
+        except:
+            traceback.print_exc()
         # Loop through all installed handlers and see if they need to be called
-        for handler in self.handlers:
-            if handler.test_callback(room, event):
-                # This handler needs to be called
-                try:
-                    handler.handle_callback(room, event)
-                except:
-                    traceback.print_exc()
+        # for handler in self.handlers:
+        #     if handler.test_callback(room, event):
+        #         # This handler needs to be called
+        #         try:
+        #             handler.handle_callback(room, event)
+        #         except:
+        #             traceback.print_exc()
 
     def handle_invite(self, room_id, state):
         print("Got invite to room: " + str(room_id))
-        print("Joining...")
+
         room = self.client.join_room(room_id)
 
         # Add message callback for this room
@@ -72,6 +86,11 @@ class MatrixBotAPI:
 
         # Add room to list
         self.rooms.append(room)
+
+        print("Joined", room_id, state)
+
+    def send_message(self, room_id, text):
+        self.client.rooms[room_id].send_text(text)
 
     def start_polling(self):
         # Starts polling for messages
