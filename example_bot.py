@@ -23,7 +23,7 @@ SERVER = "http://matrix.org"  # Matrix server URL
 #     room.send_text("Hi, " + event['sender'])
 
 
-def echo_callback(room, event, bot):
+def msg_handler(room, event, bot):
     text = event['content']['body']
     bot.send_message(event['room_id'], text)
     # args.pop(0)
