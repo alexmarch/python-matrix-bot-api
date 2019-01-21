@@ -12,11 +12,12 @@ class MatrixBotAPI:
     # rooms    - List of rooms ids to operate in, or None to accept all rooms
     def __init__(self, username, password, server, msg_handler, rooms=None):
         self.username = username
-
+        self.status = False
         # Authenticate with given credentials
         self.client = MatrixClient(server)
         try:
             self.client.login(username, password)
+            self.status = True
             print('Bot was login successfuly.')
         except MatrixRequestError as e:
             try:
@@ -92,7 +93,13 @@ class MatrixBotAPI:
     def send_message(self, room_id, text):
         self.client.rooms[room_id].send_text(text)
 
+    def exception_handler(self, exp):
+        self.status = False
+
+    def get_status(self):
+        return self.status
+
     def start_polling(self):
         # Starts polling for messages
-        self.client.start_listener_thread()
+        self.client.start_listener_thread(exception_handler=self.exception_handler)
         return self.client.sync_thread
